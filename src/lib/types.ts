@@ -3,7 +3,7 @@ import { FieldError, UseFormRegister } from "react-hook-form";
 import { TLoginForm } from "./validations";
 
 
-export type PetEssentials = Omit<Pet, "id" | "createdAt" | "updatedAt">;
+export type PetEssentials = Omit<Pet, "id" | "createdAt" | "updatedAt" | 'userId'>;
 export type UserEssentials = Omit<User, "createdAt" | "updatedAt">;
 
 

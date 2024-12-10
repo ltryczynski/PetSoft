@@ -5,13 +5,19 @@ import prisma from "@/lib/db";
 import { loginFormSchema, petFormSchema, petIdSchema } from "@/lib/validations";
 import { revalidatePath } from "next/cache";
 import bcrypt from 'bcrypt';
-import { UserEssentials } from "@/lib/types";
-import { redirect } from "next/navigation";
+import { checkAuth, getPetByPetId } from "@/lib/server-utils";
+import { Prisma } from "@prisma/client";
+import { AuthError } from "next-auth";
 
 
 // ---- User Actions ----
 
-export async function logIn(formData: FormData) {
+export async function logIn(prevState: unknown, formData: unknown) {
+    if (!(formData instanceof FormData)) {
+        return {
+            message: 'Invalid login data',
+        }
+    }
     const userData = Object.fromEntries(formData.entries());
     const validateData = loginFormSchema.safeParse(userData);
     if (!validateData.success) {
@@ -19,65 +25,77 @@ export async function logIn(formData: FormData) {
             message: 'Invalid login data',
         }
     }
-    console.log(validateData.data);
     try {
         await signIn('credentials', validateData.data);
     } catch (err) {
-        return {
-            message: 'Failed to login',
+        if (err instanceof AuthError) {
+            switch (err.type) {
+                case "CredentialsSignin": {
+                    return {
+                        message: "Invalid credentials",
+                    }
+                }
+                default: {
+                    return {
+                        message: "Failed to log in",
+                    }
+                }
+            }
         }
+        throw err;
     }
 }
 
 export async function logout() {
-    console.log('logging out');
     await signOut({
         redirectTo: '/',
     });
 }
 
-export async function signUp(formData: FormData) {
-    const userData = Object.fromEntries(formData.entries());
-    const validateData = loginFormSchema.safeParse(userData);
-    console.log(validateData);
-    if (!validateData.success) {
+export async function signUp(prevState: unknown, formData: unknown) {
+    if (!(formData instanceof FormData)) {
         return {
-            message: 'Invalid data' + validateData.error,
-        }
-    }
-    await createUser({
-        email: validateData.data.email,
-        hashedPassword: await bcrypt.hash(validateData.data.password, 10),
-        id: validateData.data.email.replace('@', '-_').replace('.', '_-'),
-    });
-    await signIn('credentials', validateData.data);
-}
-
-async function createUser(data: UserEssentials) {
-
-    try {
-        const user = await prisma.user.findUnique({
-            where: {
-                email: data.email
-            }
-        });
-        if (user) {
-            return {
-                message: 'User already exists',
-            }
-        }
-        const newUser = await prisma.user.create({
-            data
-        })
-        return {
-            user: newUser
+            message: "Invalid form data.",
         };
-    } catch (err) {
-        return {
-            message: 'Failed to create user',
-        }
     }
+
+    const formDataEntries = Object.fromEntries(formData.entries());
+
+    const validatedFormData = loginFormSchema.safeParse(formDataEntries);
+    if (!validatedFormData.success) {
+        return {
+            message: "Invalid form data.",
+        };
+    }
+
+    const { email, password } = validatedFormData.data;
+    const hashedPassword = await bcrypt.hash(password, 10);
+    try {
+        await prisma.user.create({
+            data: {
+                email,
+                hashedPassword,
+            },
+        });
+    } catch (error) {
+        if (error instanceof Prisma.PrismaClientKnownRequestError) {
+            if (error.code === "P2002") {
+                return {
+                    message: "Email already exists.",
+                };
+            }
+        }
+
+        return {
+            message: "Could not create user.",
+        };
+    }
+
+    await signIn("credentials", formData);
 }
+
+
+
 type TgetUser = {
     email: string;
 }
@@ -94,40 +112,73 @@ export async function getUser({ email }: TgetUser) {
         }
     } catch (err) {
         return {
-            message: 'Failed to get user',
+            message: 'Failed to get user' + err,
         }
     }
 }
 
 // ---- Pet Actions ----
 
-export async function addPet(petData: unknown) {
-    const validateData = petFormSchema.safeParse(petData);
-    if (!validateData.success) {
+export async function addPet(pet: unknown) {
+    const session = await checkAuth();
+
+    const validatedPet = petFormSchema.safeParse(pet);
+    if (!validatedPet.success) {
         return {
-            message: 'Invalid pet data',
-        }
+            message: "Invalid pet data.",
+        };
     }
 
     try {
         await prisma.pet.create({
-            data: validateData.data,
+            data: {
+                ...validatedPet.data,
+                user: {
+                    connect: {
+                        id: session.user.id,
+                    },
+                },
+            },
         });
-    } catch (err) {
+    } catch (error) {
+        console.log(error);
         return {
-            message: "Failed to add pet",
-        }
+            message: "Could not add pet.",
+        };
     }
-    revalidatePath('/app', 'layout')
+
+    revalidatePath("/app", "layout");
+
 }
 
 
 export async function editPet(petId: unknown, newPetData: unknown) {
+    const session = await checkAuth();
+
     const validateId = petIdSchema.safeParse(petId);
     const validateData = petFormSchema.safeParse(newPetData);
     if (!validateData.success || !validateId.success) {
         return {
             message: 'Invalid pet data',
+        }
+    }
+
+
+    try {
+        const pet = await getPetByPetId(validateId.data);
+        if (!pet) {
+            return {
+                message: 'Pet not found',
+            }
+        }
+        if (pet.userId !== session.user.id) {
+            return {
+                message: 'You are not authorized to edit this pet',
+            }
+        }
+    } catch (e) {
+        return {
+            message: 'Failed to edit pet' + e,
         }
     }
 
@@ -140,7 +191,7 @@ export async function editPet(petId: unknown, newPetData: unknown) {
         });
     } catch (err) {
         return {
-            message: "Failed to edit pet",
+            message: "Failed to edit pet" + err,
         }
     }
 
@@ -148,11 +199,30 @@ export async function editPet(petId: unknown, newPetData: unknown) {
 }
 
 export async function deletePet(petId: unknown) {
+    const session = await checkAuth();
 
     const validateId = petIdSchema.safeParse(petId);
     if (!validateId.success) {
         return {
             message: 'Invalid pet id',
+        }
+    }
+
+    try {
+        const pet = await getPetByPetId(validateId.data);
+        if (!pet) {
+            return {
+                message: 'Pet not found',
+            }
+        }
+        if (pet.userId !== session.user.id) {
+            return {
+                message: 'You are not authorized to delete this pet',
+            }
+        }
+    } catch (err) {
+        return {
+            message: 'Failed to delete pet' + err,
         }
     }
 
@@ -164,7 +234,7 @@ export async function deletePet(petId: unknown) {
         });
     } catch (err) {
         return {
-            message: "Failed to delete pet",
+            message: "Failed to delete pet" + err,
         }
     }
 

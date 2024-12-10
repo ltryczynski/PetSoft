@@ -1,16 +1,11 @@
 import ContentBlock from "@/components/content-block";
 import H1 from "@/components/h1";
 import React from "react";
-import { auth } from "@/lib/auth";
 import SignoutButton from "@/components/signout-button";
-import { redirect } from "next/navigation";
+import { checkAuth } from "@/lib/server-utils";
 
 export default async function Page() {
-  const session = await auth();
-  if (!session?.user) {
-    redirect("/login");
-  }
-  console.log(session);
+  const session = await checkAuth();
   return (
     <main>
       <div className="flex justify-between items-center text-white py-8">
