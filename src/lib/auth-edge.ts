@@ -1,46 +1,13 @@
-import NextAuth, { NextAuthConfig } from 'next-auth';
-import bcrypt from 'bcryptjs';
-import Credentials from "next-auth/providers/credentials"
-import { getUserByEmail } from './server-utils';
-import { loginFormSchema } from './validations';
+import { NextAuthConfig } from "next-auth";
+import prisma from "./db";
 
-
-const config = {
+export const nextAuthEdgeConfig = {
     pages: {
-        signIn: 'login',
-        signOut: 'logout',
-        newUser: "payment"
-
+        signIn: "/login",
     },
-    providers: [
-        Credentials({
-            credentials: {
-                email: { label: "Email", type: "email" },
-                password: { label: "Password", type: "password" }
-            },
-            authorize: async (credentials) => {
-                const validation = loginFormSchema.safeParse(credentials);
-                if (!validation.success) {
-                    return null;
-                }
-                const { email, password } = validation.data;
-
-
-                const user = await getUserByEmail(email);
-                if (!user) {
-                    return null;
-                }
-
-                const passwordMatch = await bcrypt.compare(password, user.hashedPassword)
-                if (!passwordMatch) {
-                    return null;
-                }
-                return user;
-            }
-
-        })],
     callbacks: {
         authorized: ({ auth, request }) => {
+            // runs on every request with middleware
             const isLoggedIn = Boolean(auth?.user);
             const isTryingToAccessApp = request.nextUrl.pathname.includes("/app");
 
@@ -81,39 +48,37 @@ const config = {
             }
 
             return false;
-
-
         },
-
         jwt: async ({ token, user, trigger }) => {
             if (user && user.id) {
                 token.userId = user.id;
             }
             if (user) {
-                token.hasAccess = user.hasAccess;
+                // on sign in
                 token.email = user.email!;
+                token.hasAccess = user.hasAccess;
             }
-            if (trigger === 'update') {
-                const userFromDb = await getUserByEmail(token.email);
+
+            if (trigger === "update") {
+                // on every request
+                const userFromDb = await prisma.user.findUnique({
+                    where: {
+                        email: token.email,
+                    },
+                });
                 if (userFromDb) {
                     token.hasAccess = userFromDb.hasAccess;
                 }
-
             }
 
             return token;
         },
         session: ({ session, token }) => {
-            if (session.user) {
-                session.user.id = token.userId;
-                session.user.hasAccess = token.hasAccess;
-            }
+            session.user.id = token.userId;
+            session.user.hasAccess = token.hasAccess;
 
             return session;
-        }
-
-    }
-} satisfies NextAuthConfig
-
-export const { auth, signIn, signOut, handlers } = NextAuth(config)
-
+        },
+    },
+    providers: [],
+} satisfies NextAuthConfig;
