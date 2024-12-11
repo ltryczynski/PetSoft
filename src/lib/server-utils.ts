@@ -47,7 +47,6 @@ export async function getUserByEmail(email: User['email']) {
                 email
             }
         })
-        console.log(user);
         return user;
 
     } catch (e) {

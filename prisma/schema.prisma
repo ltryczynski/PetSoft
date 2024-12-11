@@ -6,8 +6,9 @@ generator client {
 }
 
 datasource db {
-  provider = "sqlite"
-  url      = env("DATABASE_URL")
+  provider  = "postgresql"
+  url       = env("POSTGRES_PRISMA_URL") // uses connection pooling
+  directUrl = env("POSTGRES_URL_NON_POOLING") // uses a direct connection
 }
 
 model Pet {
@@ -27,7 +28,38 @@ model User {
   id             String   @id @default(cuid())
   email          String   @unique
   hashedPassword String
+  hasAccess      Boolean  @default(false)
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
   pets           Pet[]
+}
+
+// Talknow project
+model posts {
+  id             Int      @id @default(autoincrement())
+  title          String
+  slug           String
+  featured_image String
+  teaser         String
+  content        String
+  category       String
+  tags           String
+  published_date DateTime @default(now())
+  update_date    DateTime @default(now())
+  published      Boolean  @default(true)
+}
+
+// EventoProject
+model EventoEvent {
+  id            Int      @id @default(autoincrement())
+  name          String
+  slug          String   @unique
+  city          String
+  location      String
+  date          DateTime
+  organizerName String
+  imageUrl      String
+  description   String
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
 }
