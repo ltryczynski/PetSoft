@@ -8,7 +8,7 @@ export default function Home() {
     <main className="bg-[#5ccaa7] min-h-screen flex justify-center items-center">
       <section className="flex flex-col xl:flex-row items-center justify-center gap-10 max-w-[1050px]">
         <Image
-          src="https://bytegrad.com/course-assets/react-nextjs/petsoft-preview.png"
+          src="https://static.ltmedia.pl/assets/img/petsoft-preview.png"
           width={519}
           height={472}
           alt="PetSoft software image"
