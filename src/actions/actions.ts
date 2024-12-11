@@ -93,7 +93,8 @@ export async function signUp(prevState: unknown, formData: unknown) {
         };
     }
 
-    await signIn("credentials", formData);
+    await signIn("credentials", { ...validatedFormData.data, redirect: false });
+    redirect('/payment');
 }
 
 
