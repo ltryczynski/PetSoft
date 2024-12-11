@@ -9,6 +9,8 @@ const config = {
     pages: {
         signIn: 'login',
         signOut: 'logout',
+        newUser: "payment"
+
     },
     providers: [
         Credentials({
@@ -47,9 +49,7 @@ const config = {
             }
 
             if (isLoggedIn && isTryingToAccessApp && !auth?.user.hasAccess) {
-                const url = new URL(request.nextUrl);
-                url.pathname = "/payment";
-                return Response.redirect(url);
+                return Response.redirect(new URL("/payment", request.nextUrl));
             }
 
             if (isLoggedIn && isTryingToAccessApp && auth?.user.hasAccess) {
