@@ -4,7 +4,8 @@ const nextConfig = {
         remotePatterns: [
             {
                 protocol: 'https',
-                hostname: 'bytegrad.com',
+                hostname: 'static.ltmedia.pl',
+                pathname: '/assets/img/**'
             },
             {
                 protocol: 'https',
