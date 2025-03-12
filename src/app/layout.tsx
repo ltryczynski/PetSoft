@@ -12,6 +12,10 @@ const inter = Inter({ subsets: ["latin"] });
 export const metadata: Metadata = {
   title: "PetSoft | Pet daycare software",
   description: "Take care of people's pets responsibly with PetSoft",
+  robots: {
+    follow: false,
+    index: false,
+  }
 };
 
 export default function RootLayout({
