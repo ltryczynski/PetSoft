@@ -6,11 +6,11 @@ import React, { useMemo } from "react";
 
 export default function PetList() {
   const { pets, handleChangeSelectedPet, selectedPetId } = usePetContext();
-  const { searchText } = useSearchContext();
+  const { debounceText } = useSearchContext();
 
   const filteredPets = useMemo(
-    () => pets.filter((pet) => pet.name.toLowerCase().includes(searchText.toLowerCase())),
-    [pets, searchText]
+    () => pets.filter((pet) => pet.name.toLowerCase().includes(debounceText.toLowerCase())),
+    [pets, debounceText]
   );
   return (
     <ul className="bg-white border-b border-light">

@@ -1,7 +1,7 @@
 'use client';
 import { PetContext } from "@/context/pet-context-provider";
 import { SearchContext } from "@/context/search-context-provider";
-import { useContext } from "react";
+import { useContext, useEffect, useState } from "react";
 
 
 
@@ -23,3 +23,18 @@ export function useSearchContext() {
 }
 
 
+export function useDebounce<T>(value: T, delay: number): T {
+    const [debouncedValue, setDebouncedValue] = useState(value);
+
+    useEffect(() => {
+        const handler = setTimeout(() => {
+            setDebouncedValue(value);
+        }, delay);
+
+        return () => {
+            clearTimeout(handler);
+        };
+    }, [value, delay]);
+
+    return debouncedValue;
+}
