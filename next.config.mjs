@@ -4,6 +4,10 @@ const nextConfig = {
         remotePatterns: [
             {
                 protocol: 'https',
+                hostname: 'petsoft.ltmedia.pl'
+            },
+            {
+                protocol: 'https',
                 hostname: 'static.ltmedia.pl',
                 pathname: '/assets/img/**'
             },

@@ -89,7 +89,7 @@ export async function signUp(prevState: unknown, formData: unknown) {
         }
 
         return {
-            message: "Could not create user.",
+            message: "Could not create user." + error,
         };
     }
 
